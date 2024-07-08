@@ -1,6 +1,5 @@
 import argparse
 from enum import Enum, auto
-from pprint import pprint
 
 ESC_CHARS = [
     '"',
@@ -11,8 +10,8 @@ ESC_CHARS = [
     "n",
     "r",
     "t",
-    "u",
 ]
+MIN_ALLOWED_UNICODE, MAX_ALLOWED_UNICODE = 0x20, 0x10FFFF
 
 
 class TokenType(Enum):
@@ -55,22 +54,22 @@ class JSONLexer:
             elif char == "\n":
                 self.advance(is_new_line=True)
             elif char == "{":
-                self.create_token(TokenType.LEFT_BRACE, "[")
+                tokens.append(self.create_token(TokenType.LEFT_BRACE, "{"))
                 self.advance()
             elif char == "}":
-                self.create_token(TokenType.RIGHT_BRACE, "]")
+                tokens.append(self.create_token(TokenType.RIGHT_BRACE, "}"))
                 self.advance()
             elif char == "[":
-                self.create_token(TokenType.LEFT_BRACKET, "{")
+                tokens.append(self.create_token(TokenType.LEFT_BRACKET, "["))
                 self.advance()
             elif char == "]":
-                self.create_token(TokenType.RIGHT_BRACKET, "}")
+                tokens.append(self.create_token(TokenType.RIGHT_BRACKET, "]"))
                 self.advance()
             elif char == ",":
-                self.create_token(TokenType.COMMA, ",")
+                tokens.append(self.create_token(TokenType.COMMA, ","))
                 self.advance()
-            elif char == ".":
-                self.create_token(TokenType.COLON, ":")
+            elif char == ":":
+                tokens.append(self.create_token(TokenType.COLON, ":"))
                 self.advance()
             elif char == '"':
                 tokens.append(self.tokenize_string())
@@ -78,6 +77,9 @@ class JSONLexer:
                 tokens.append(self.tokenize_number())
             elif char.isalpha():
                 tokens.append(self.tokenize_boolean())
+            else:
+                raise ValueError(f"Unexpected character: {char} at position {self.pos}")
+        return tokens
 
     def create_token(self, type, value):
         return Token(type, value, self.line, self.column)
@@ -91,70 +93,55 @@ class JSONLexer:
             self.column += 1
 
     def tokenize_string(self):
-        start_line, start_column = (
-            self.line,
-            self.column,
-        )  # store where we started for when we create the Token
+        start_line, start_column = self.line, self.column
+        value = self.text[self.pos]  # Include the opening quote
         self.advance()  # move past initial quote
-
-        # we don't need to build up a new string, just raise error if something is invalid
-        while not self.done_tokenizing():
+        while self.pos < len(self.text):
             char = self.text[self.pos]
-            # if we hit escape character
-            if char == "\\":
+            if char == '"':
+                value += char  # Include the closing quote
                 self.advance()
-                if self.done_tokenizing():
-                    raise ValueError(
-                        f"Unterminated string beginning at line {start_line}, column {start_column}"
-                    )
-
-                esc_char = self.text[self.pos]
-                if esc_char not in ESC_CHARS:
-                    raise ValueError(
-                        f"Invalid escape sequence '\\{esc_char}' at line {self.line}, column {self.column}"
-                    )
-                if esc_char == "u":
-                    # inc for len of hex_string
-                    for _ in range(4):
-                        self.advance()
-                    if self.done_tokenizing():
-                        raise ValueError(
-                            f"Invalid hex sequence at line {self.line}, column {self.column - 4}"
-                        )
-                    hex_seq = self.text[self.pos - 3 : self.pos + 1]
-                    if not all(
-                        c in (valid_hex := "0123456789ABCEDFabcedf") for c in hex_seq
-                    ):
-                        reset_col = self.column - 4
-                        for c_ in hex_seq:
-                            if c_ not in valid_hex:
-                                raise ValueError(
-                                    f"Invalid hex sequence at line {self.line}, column {reset_col}"
-                                )
+                return self.create_token(TokenType.STRING, value)
+            elif char == "\\":
+                value += char
+                self.advance()
+                if self.pos < len(self.text):
+                    next_char = self.text[self.pos]
+                    value += next_char
+                    self.advance()
+                    if next_char == "u":
+                        # Validate the next 4 characters as hex digits
+                        for _ in range(4):
+                            if (
+                                self.pos < len(self.text)
+                                and self.text[self.pos] in "0123456789ABCDEFabcdef"
+                            ):
+                                value += self.text[self.pos]
+                                self.advance()
                             else:
-                                reset_col += 1
-            elif not (0x20 <= ord(char) <= 0x10FFFF):
+                                raise ValueError(
+                                    f"Invalid Unicode escape sequence at line {self.line}, column {self.column}"
+                                )
+                else:
+                    raise ValueError(
+                        f"Unterminated string at line {start_line}, column {start_column}"
+                    )
+            elif not MIN_ALLOWED_UNICODE <= ord(char) <= MAX_ALLOWED_UNICODE:
                 raise ValueError(
-                    f"Invalid character {char} in string at line {self.line}, column {self.column}"
+                    f"Unescaped control character {repr(char)} at line {self.line}, column {self.column}"
                 )
-
-    def done_tokenizing(self):
-        return self.pos >= len(self.text) or self.text[self.pos] == '"'
+            else:
+                value += char
+                self.advance()
+        raise ValueError(
+            f"Unterminated string at line {start_line}, column {start_column}"
+        )
 
     def tokenize_number(self):
         pass
 
     def tokenize_boolean(self):
         pass
-
-    # def tokenize(self):
-    #     print("Working on text of length:", len(self.text))
-    #     tokens = []
-    #     while self.pos < len(self.text):
-    #         char = self.text[self.pos]
-    #         if char == "{":
-    #             tokens.append(Token())
-    #     return tokens
 
 
 def read_file(json_file):
@@ -171,10 +158,9 @@ def main():
     parser.add_argument("filename")
     args = parser.parse_args()
     file_str = read_file(args.filename)
-    print(file_str)
     lexer = JSONLexer(file_str)
-    # tokens = lexer.tokenize()
-    # pprint(tokens)
+    tokens = lexer.tokenize()
+    print(tokens)
 
 
 if __name__ == "__main__":
