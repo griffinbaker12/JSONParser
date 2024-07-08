@@ -227,7 +227,9 @@ def main():
     file_str = read_file(args.filename)
     lexer = JSONLexer(file_str)
     tokens = lexer.tokenize()
-    print(tokens)
+    print(f"⭐️ Parsed {len(tokens)} tokens ⭐️")
+    for t in tokens:
+        print(t)
 
 
 if __name__ == "__main__":
