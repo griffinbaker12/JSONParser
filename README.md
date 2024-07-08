@@ -1,6 +1,8 @@
 # Inspiration
-I have always wanted to understand how parsing works, so I implemented a JSON parser.
-First in Python to better wrap my head around the problem, then in C to appreciate my Python solution.
+I've always wanted to understand how parsing works.
+
+# Reference
+This [site](https://www.crockford.com/mckeeman.html) has super helpful as it has the complete JSON grammar.
 
 # Notes
 Two parts to the parsing process:

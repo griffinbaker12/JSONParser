@@ -12,13 +12,6 @@ ESC_CHARS = [
     "t",
 ]
 MIN_ALLOWED_UNICODE, MAX_ALLOWED_UNICODE = 0x20, 0x10FFFF
-VALID_NUM_CHARS = [
-    ".",
-    "-",
-    "+",
-    "e",
-    "E",
-]
 
 
 class TokenType(Enum):
@@ -83,9 +76,11 @@ class JSONLexer:
             elif char.isdigit() or char == "-":
                 tokens.append(self.tokenize_number())
             elif char.isalpha():
-                tokens.append(self.tokenize_boolean())
+                tokens.append(self.tokenize_keyword())
             else:
-                raise ValueError(f"Unexpected character: {char} at position {self.pos}")
+                raise ValueError(
+                    f"Unexpected character: {char} at line {self.line}, column {self.column}"
+                )
         return tokens
 
     def create_token(self, type, value):
@@ -112,26 +107,32 @@ class JSONLexer:
             elif char == "\\":
                 value += char
                 self.advance()
-                if self.pos < len(self.text):
-                    next_char = self.text[self.pos]
-                    value += next_char
-                    self.advance()
-                    if next_char == "u":
-                        # Validate the next 4 characters as hex digits
-                        for _ in range(4):
-                            if (
-                                self.pos < len(self.text)
-                                and self.text[self.pos] in "0123456789ABCDEFabcdef"
-                            ):
-                                value += self.text[self.pos]
-                                self.advance()
-                            else:
-                                raise ValueError(
-                                    f"Invalid Unicode escape sequence at line {self.line}, column {self.column}"
-                                )
-                else:
+                if self.pos >= len(self.text):
                     raise ValueError(
                         f"Unterminated string at line {start_line}, column {start_column}"
+                    )
+                escape_char = self.text[self.pos]
+                if escape_char in ESC_CHARS:
+                    value += escape_char
+                    self.advance()
+                elif escape_char == "u":
+                    value += escape_char
+                    self.advance()
+                    for _ in range(4):
+                        if self.pos >= len(self.text):
+                            raise ValueError(
+                                f"Incomplete Unicode escape sequence at line {self.line}, column {self.column}"
+                            )
+                        hex_char = self.text[self.pos]
+                        if hex_char not in "0123456789ABCDEFabcdef":
+                            raise ValueError(
+                                f"Invalid Unicode escape sequence at line {self.line}, column {self.column}"
+                            )
+                        value += hex_char
+                        self.advance()
+                else:
+                    raise ValueError(
+                        f"Invalid escape sequence '\\{escape_char}' at line {self.line}, column {self.column}"
                     )
             elif not MIN_ALLOWED_UNICODE <= ord(char) <= MAX_ALLOWED_UNICODE:
                 raise ValueError(
@@ -195,19 +196,19 @@ class JSONLexer:
                 value += self.text[self.pos]
                 self.advance()
 
-        # is this really necessary?
-        try:
-            # should this be updated?
-            float(value)
-        except ValueError:
-            raise ValueError(
-                f"Invalid number format at line {start_line}, column {start_column}"
-            )
-
         return self.create_token(TokenType.NUMBER, value)
 
-    def tokenize_boolean(self):
-        pass
+    def tokenize_keyword(self):
+        value = ""
+        while self.pos < len(self.text) and self.text[self.pos].isalpha():
+            value += self.text[self.pos]
+            self.advance()
+        if value == "false" or value == "true":
+            return self.create_token(TokenType.BOOLEAN, value)
+        elif value == "null":
+            return self.create_token(TokenType.NULL, value)
+        else:
+            raise ValueError(f"Invalid token at line {self.line}, column {self.column}")
 
 
 def read_file(json_file):
