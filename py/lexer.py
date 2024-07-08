@@ -12,6 +12,13 @@ ESC_CHARS = [
     "t",
 ]
 MIN_ALLOWED_UNICODE, MAX_ALLOWED_UNICODE = 0x20, 0x10FFFF
+VALID_NUM_CHARS = [
+    ".",
+    "-",
+    "+",
+    "e",
+    "E",
+]
 
 
 class TokenType(Enum):
@@ -138,7 +145,66 @@ class JSONLexer:
         )
 
     def tokenize_number(self):
-        pass
+        # a number is made up of an integer, fraction, exponent
+        # so lets check for all these parts
+        start_line, start_column = self.line, self.column
+        value = ""
+        # check leading negative sign
+        if self.text[self.pos] == "-":
+            value += "-"
+            self.advance()
+        # check number part
+        if self.pos < len(self.text) and self.text[self.pos] == "0":
+            value += "0"
+            self.advance()
+            if self.pos < len(self.text) and self.text[self.pos].isdigit():
+                raise ValueError(
+                    f"Leading zeroes not allowed at line {start_line}, column {start_column}"
+                )
+        elif self.pos < len(self.text) and self.text[self.pos].isdigit():
+            while self.pos < len(self.text) and self.text[self.pos].isdigit():
+                value += self.text[self.pos]
+                self.advance()
+        else:
+            raise ValueError(
+                f"Invalid number at line {start_line}, column {start_column}"
+            )
+        # check fraction part
+        if self.pos < len(self.text) and self.text[self.pos] == ".":
+            value += "."
+            self.advance()
+            if not (self.pos < len(self.text) and self.text[self.pos].isdigit()):
+                raise ValueError(
+                    f"Invalid fractional part at line {self.line}, column {self.column}"
+                )
+            while self.pos < len(self.text) and self.text[self.pos].isdigit():
+                value += self.text[self.pos]
+                self.advance()
+        # check exponent part
+        if self.pos < len(self.text) and self.text[self.pos] in "eE":
+            value += self.text[self.pos]
+            self.advance()
+            if self.pos < len(self.text) and self.text[self.pos] in "-+":
+                value += self.text[self.pos]
+                self.advance()
+            if not (self.pos < len(self.text) and self.text[self.pos].isdigit()):
+                raise ValueError(
+                    f"Invalid exponent part at line {self.line}, column {self.column}"
+                )
+            while self.pos < len(self.text) and self.text[self.pos].isdigit():
+                value += self.text[self.pos]
+                self.advance()
+
+        # is this really necessary?
+        try:
+            # should this be updated?
+            float(value)
+        except ValueError:
+            raise ValueError(
+                f"Invalid number format at line {start_line}, column {start_column}"
+            )
+
+        return self.create_token(TokenType.NUMBER, value)
 
     def tokenize_boolean(self):
         pass

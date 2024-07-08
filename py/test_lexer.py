@@ -37,7 +37,7 @@ class TestJSONLexer(unittest.TestCase):
         invalid_cases = [
             '"Unterminated string',
             '"Invalid Unicode \\u12XY"',
-            '"Unescaped control character \u0000"',  # Using an actual control character
+            '"Unescaped control character \u0000"',
         ]
         for input_str in invalid_cases:
             with self.subTest(input=input_str):
@@ -53,6 +53,22 @@ class TestJSONLexer(unittest.TestCase):
         self.assertEqual(tokens[0].line, 2)  # After the newline
         self.assertEqual(tokens[1].type, TokenType.RIGHT_BRACE)
         self.assertEqual(tokens[1].line, 3)  # On the third line
+
+    def test_integer_tokenization(self):
+        test_cases = [
+            ("0", "0"),
+            ("123", "123"),
+            ("-456", "-456"),
+            ("1000000", "1000000"),
+            ("-0", "-0"),
+        ]
+        for input_str, expected_value in test_cases:
+            with self.subTest(input=input_str):
+                lexer = JSONLexer(input_str)
+                tokens = lexer.tokenize()
+                self.assertEqual(len(tokens), 1)
+                self.assertEqual(tokens[0].type, TokenType.NUMBER)
+                self.assertEqual(tokens[0].value, expected_value)
 
 
 if __name__ == "__main__":
