@@ -2,3 +2,4 @@ pj/
 json-parser/
 py/__pycache__/
 .DS_Store
+py/test_analyzer.py

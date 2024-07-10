@@ -1,6 +1,8 @@
 import argparse
 from enum import Enum, auto
 
+from common import print_sandwich, read_file
+
 ESC_CHARS = [
     '"',
     "\\",
@@ -211,12 +213,6 @@ class JSONLexer:
             raise ValueError(f"Invalid token at line {self.line}, column {self.column}")
 
 
-def read_file(json_file):
-    with open(json_file) as f:
-        json_content = f.read()
-    return json_content
-
-
 def main():
     parser = argparse.ArgumentParser(
         prog="JSONParser",
@@ -227,7 +223,7 @@ def main():
     file_str = read_file(args.filename)
     lexer = JSONLexer(file_str)
     tokens = lexer.tokenize()
-    print(f"⭐️ Parsed {len(tokens)} tokens ⭐️")
+    print_sandwich(f"⭐️ Parsed {len(tokens)} tokens ⭐️")
     for t in tokens:
         print(t)
 
