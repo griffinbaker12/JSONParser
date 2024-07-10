@@ -32,6 +32,7 @@ def parse_array(tokens: List[Token], start_idx=0) -> Tuple[List[Token], int]:
         if curr_token.type == TokenType.RIGHT_BRACKET:
             return parsed_array, curr_idx + 1
 
+        # KEY: lets us keep track of nested structures
         value, curr_idx = parse_value(tokens, curr_idx)
         parsed_array.append(value)
 
@@ -92,7 +93,7 @@ def parse_object(tokens: List[Token], start_idx=0) -> Tuple[JSONObject, int]:
                     f"Expected another dictionary element at line {tokens[curr_idx].line}, column {tokens[curr_idx].column}"
                 )
             peaked = tokens[peak_idx]
-            if peaked.type == TokenType.RIGHT_BRACKET:
+            if peaked.type == TokenType.RIGHT_BRACE:
                 raise ValueError(
                     f"Invalid trailing comma at end of the array at line {peaked.line}, column, {peaked.column}"
                 )
@@ -102,6 +103,9 @@ def parse_object(tokens: List[Token], start_idx=0) -> Tuple[JSONObject, int]:
 
 
 def parse_value(tokens: List[Token], start_idx):
+    """
+    Takes list of tokens, and returns parsed counterpart
+    """
     if start_idx >= len(tokens):
         raise ValueError("Unexpected end of input")
 
@@ -120,8 +124,9 @@ def parse_value(tokens: List[Token], start_idx):
 
 
 def parse_tokens(tokens):
+    if tokens[0].type not in [TokenType.LEFT_BRACE, TokenType.LEFT_BRACKET]:
+        raise ValueError("A JSON payload should be an object or array, not a string.")
     parsed_v, end_idx = parse_value(tokens, 0)
-    print(parsed_v)
     if end_idx != len(tokens):
         raise ValueError(
             f"Unexpected token after JSON document at line {tokens[end_idx].line}, column {tokens[end_idx].column}"
@@ -129,15 +134,14 @@ def parse_tokens(tokens):
     return parsed_v
 
 
-def token_to_type(token: Token):
+def token_to_type(token: Token) -> Union[bool, int, None, float, str]:
     v, t = token.value, token.type
-    print(v)
     if t == TokenType.BOOLEAN:
         return token.value == "true"
     elif t == TokenType.NULL:
         return None
     elif t == TokenType.NUMBER:
-        return int(v) if v.isdigit() else float(v)
+        return int(v) if v.lstrip("-").isdigit() else float(v)
     elif t == TokenType.STRING:
         return v.strip('"')
     else:
@@ -157,9 +161,8 @@ def main():
     print_sandwich(f"⭐️ Parsed {len(tokens)} tokens ⭐️")
     for t in tokens:
         print(t)
-    print_sandwich(f"Feeding to analyzer")
     analyzed = parse_tokens(tokens)
-    print_sandwich(f"Parsed Result")
+    print_sandwich("Parsed Result")
     print(analyzed)
 
 
