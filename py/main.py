@@ -27,3 +27,7 @@ def main():
     parsed = parse_tokens(tokens)
     print_sandwich("Parsed Result")
     print(parsed)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,13 +1,35 @@
-# Inspiration
-I've always wanted to understand how parsing works.
+# JSON Parser in Python
 
-# Reference
-This [site](https://notes.eatonphil.com/writing-a-simple-json-parser.html) was good to understand how to initially think about the problem. Their implementation is too simple, but it gets you off the ground.
-Once I understood the basic premise, this [site](https://www.crockford.com/mckeeman.html) was super helpful as it has the complete JSON grammar.
-At that point, it pretty much becomes translating the grammar into the PL of your choice.
+An implementation of a JSON Parser in Python. This parser performs both lexical and syntactic analysis of JSON input, providing detailed error reporting with line and column numbers if parsing fails.
 
-# Capabilities and Testing
-This parser isn't perfect, but I wanted to push it beyond just basic examples. For example, it can accurately parse:
+## Inspiration
+
+I've always wanted to understand how parsing works!
+
+## Features
+
+- Full JSON syntax support
+- Detailed error reporting with line and column numbers
+- Handles nested structures and all JSON data types
+- Extensive test suite
+
+## Usage
+
+```bash
+python3 py/json-parser FILE
+```
+
+## Testing
+
+Add any additional tests to the `test/` directory you may want, then run:
+
+```bash
+python3 -m unittest py/test_parser.py
+```
+
+## Capabilities
+
+This parser can handle complex JSON structures, including nested objects and arrays, Unicode characters, and escape sequences. Here's an example of a complex JSON it can parse:
 
 ```
 [
@@ -87,15 +109,14 @@ This parser isn't perfect, but I wanted to push it beyond just basic examples. F
 ]
 ```
 
-You can add addtionaal tests to to ```test/``` directory, and run them via:
+## References
 
-```
-python -m unittest py/test_parser.py
-```
+- [Writing a Simple JSON Parser](https://notes.eatonphil.com/writing-a-simple-json-parser.html) - Helpful for understanding initial concepts.
+- [JSON Grammar](https://www.crockford.com/mckeeman.html) - Comprehensive JSON grammar reference.
+- [JSONLint](https://jsonlint.com/) - Useful for visualizing and validating JSON.
 
-This [site](https://jsonlint.com/) was also helpful in visualizing different test cases.
+## Notes on Parsing Process
 
-# Notes
 Two parts to the parsing process:
 1) Lexical analysis -> split input into tokens
 2) Syntactic analysis -> gets fed the tokens to validate syntactical patterns
